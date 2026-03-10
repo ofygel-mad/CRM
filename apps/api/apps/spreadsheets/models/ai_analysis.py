@@ -1,20 +1,34 @@
-import uuid
-
 from django.db import models
 
-from apps.core.models import TimeStampedModel
+from apps.core.models import BaseModel
+from apps.spreadsheets.domain import SpreadsheetAIAnalysisType
 
 
-class SpreadsheetAIAnalysis(TimeStampedModel):
-    class AnalysisType(models.TextChoices):
-        MAPPING_SUGGESTION = "mapping_suggestion", "Mapping suggestion"
-        ANOMALY_REPORT = "anomaly_report", "Anomaly report"
-        FORMULA_EXPLANATION = "formula_explanation", "Formula explanation"
-        SYNC_RECOMMENDATION = "sync_recommendation", "Sync recommendation"
+class SpreadsheetAIAnalysis(BaseModel):
+    document = models.ForeignKey(
+        "spreadsheets.SpreadsheetDocument",
+        on_delete=models.CASCADE,
+        related_name="ai_analyses",
+    )
+    version = models.ForeignKey(
+        "spreadsheets.SpreadsheetVersion",
+        on_delete=models.CASCADE,
+        related_name="ai_analyses",
+    )
+    analysis_type = models.CharField(
+        max_length=64,
+        choices=SpreadsheetAIAnalysisType.choices,
+        db_index=True,
+    )
+    result_json = models.JSONField(default=dict)
+    confidence = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    document = models.ForeignKey("spreadsheets.SpreadsheetDocument", related_name="ai_analyses", on_delete=models.CASCADE)
-    version = models.ForeignKey("spreadsheets.SpreadsheetVersion", related_name="ai_analyses", on_delete=models.CASCADE)
-    analysis_type = models.CharField(max_length=50, choices=AnalysisType.choices)
-    result = models.JSONField(default=dict, blank=True)
-    confidence = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
+    class Meta:
+        db_table = "spreadsheet_ai_analyses"
+        indexes = [
+            models.Index(fields=["document", "analysis_type", "created_at"]),
+            models.Index(fields=["version", "analysis_type"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.analysis_type}:{self.document_id}"

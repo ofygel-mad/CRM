@@ -1,6 +1,7 @@
 from celery import shared_task
 from django.db import transaction
 
+from apps.spreadsheets.domain import SpreadsheetDocumentStatus
 from apps.spreadsheets.models import SpreadsheetDocument, SpreadsheetVersion
 from apps.spreadsheets.parsers.workbook_loader import load_workbook_from_path
 from apps.spreadsheets.services.analysis.analyze_workbook import analyze_workbook
@@ -17,7 +18,7 @@ def analyze_spreadsheet_version(version_id: str) -> None:
         finally:
             workbook.close()
     except Exception as exc:  # noqa: BLE001
-        SpreadsheetDocument.objects.filter(id=version.document_id).update(status=SpreadsheetDocument.Status.SYNC_ERROR)
+        SpreadsheetDocument.objects.filter(id=version.document_id).update(status=SpreadsheetDocumentStatus.SYNC_ERROR)
         raise exc
 
 

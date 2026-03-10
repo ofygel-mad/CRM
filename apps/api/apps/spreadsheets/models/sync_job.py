@@ -1,36 +1,46 @@
-import uuid
-
 from django.db import models
 
-from apps.core.models import TimeStampedModel
+from apps.core.models import BaseModel
+from apps.spreadsheets.domain import SpreadsheetJobStatus, SpreadsheetSyncDirection
 
 
-class SpreadsheetSyncJob(TimeStampedModel):
-    class Direction(models.TextChoices):
-        TO_DB = "to_db", "To DB"
-        FROM_DB = "from_db", "From DB"
-        BIDIRECTIONAL = "bidirectional", "Bidirectional"
-
-    class Status(models.TextChoices):
-        PENDING = "pending", "Pending"
-        RUNNING = "running", "Running"
-        COMPLETED = "completed", "Completed"
-        PARTIAL = "partial", "Partial"
-        FAILED = "failed", "Failed"
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class SpreadsheetSyncJob(BaseModel):
     organization_id = models.UUIDField(db_index=True)
-    document = models.ForeignKey("spreadsheets.SpreadsheetDocument", related_name="sync_jobs", on_delete=models.CASCADE)
+    document = models.ForeignKey(
+        "spreadsheets.SpreadsheetDocument",
+        on_delete=models.CASCADE,
+        related_name="sync_jobs",
+    )
     mapping = models.ForeignKey(
         "spreadsheets.SpreadsheetMapping",
-        related_name="sync_jobs",
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        related_name="sync_jobs",
     )
-    direction = models.CharField(max_length=20, choices=Direction.choices)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    summary = models.JSONField(default=dict, blank=True)
+    direction = models.CharField(
+        max_length=32,
+        choices=SpreadsheetSyncDirection.choices,
+        db_index=True,
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=SpreadsheetJobStatus.choices,
+        default=SpreadsheetJobStatus.PENDING,
+        db_index=True,
+    )
+    summary_json = models.JSONField(default=dict, blank=True)
     error_text = models.TextField(blank=True)
     created_by_user_id = models.UUIDField(db_index=True, null=True, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "spreadsheet_sync_jobs"
+        indexes = [
+            models.Index(fields=["organization_id", "status", "created_at"]),
+            models.Index(fields=["document", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.document_id}:{self.direction}:{self.status}"
