@@ -53,3 +53,26 @@ class Role(models.Model):
     class Meta:
         db_table = 'roles'
         unique_together = [('organization', 'code')]
+
+
+class OrganizationMembership(models.Model):
+    class Role(models.TextChoices):
+        OWNER = 'owner', 'Владелец'
+        ADMIN = 'admin', 'Администратор'
+        MANAGER = 'manager', 'Менеджер'
+        VIEWER = 'viewer', 'Наблюдатель'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='memberships')
+    organization = models.ForeignKey(
+        'organizations.Organization', on_delete=models.CASCADE, related_name='memberships',
+    )
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.MANAGER)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'organization_memberships'
+        unique_together = [('user', 'organization')]
+
+    def __str__(self):
+        return f'{self.user.email} → {self.role}'

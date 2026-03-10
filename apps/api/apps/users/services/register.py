@@ -1,9 +1,8 @@
 from django.db import transaction
 from django.utils.text import slugify
-from apps.users.models import User, Role
+from apps.users.models import User, Role, OrganizationMembership
 from apps.organizations.models import Organization
 from apps.organizations.models import apply_mode_capabilities
-import uuid
 
 
 @transaction.atomic
@@ -44,4 +43,11 @@ def register_organization(
         phone=phone,
         organization=org,
     )
+
+    OrganizationMembership.objects.get_or_create(
+        user=user,
+        organization=org,
+        defaults={'role': OrganizationMembership.Role.OWNER},
+    )
+
     return user, org
