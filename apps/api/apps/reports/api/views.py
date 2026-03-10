@@ -1,9 +1,10 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, Count
-from django.utils import timezone
 from datetime import timedelta
+
+from django.db.models import Count, Sum
+from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 class DashboardSummaryView(APIView):
@@ -22,7 +23,7 @@ class DashboardSummaryView(APIView):
         customers_total = Customer.objects.filter(organization=org, deleted_at__isnull=True).count()
         customers_this_month = Customer.objects.filter(organization=org, created_at__gte=month_start).count()
         customers_prev_month = Customer.objects.filter(
-            organization=org, created_at__gte=prev_start, created_at__lt=month_start
+            organization=org, created_at__gte=prev_start, created_at__lt=month_start,
         ).count()
 
         active_deals = Deal.objects.filter(organization=org, status='open', deleted_at__isnull=True).count()
@@ -45,15 +46,43 @@ class DashboardSummaryView(APIView):
         ).count()
 
         recent_customers = Customer.objects.filter(
-            organization=org, deleted_at__isnull=True
+            organization=org, deleted_at__isnull=True,
         ).order_by('-created_at').values('id', 'full_name', 'company_name', 'status', 'created_at')[:5]
 
-        return Response({
+        deals_by_stage = (
+            Deal.objects
+            .filter(organization=org, status='open')
+            .values('stage__name')
+            .annotate(count=Count('id'), amount=Sum('amount'))
+            .order_by('-amount')[:10]
+        )
+
+        customers_by_source = (
+            Customer.objects
+            .filter(organization=org, deleted_at__isnull=True)
+            .exclude(source='')
+            .values('source')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:8]
+        )
+
+        data = {
             'customers_count': customers_total,
             'customers_delta': customers_this_month - customers_prev_month,
             'active_deals_count': active_deals,
             'revenue_month': float(revenue),
+            'revenue_delta': 0,
             'tasks_today': tasks_today,
             'overdue_tasks': overdue_tasks,
             'recent_customers': list(recent_customers),
-        })
+        }
+        data['deals_by_stage'] = [
+            {'stage': d['stage__name'], 'count': d['count'], 'amount': d['amount'] or 0}
+            for d in deals_by_stage
+        ]
+        data['customers_by_source'] = [
+            {'source': c['source'], 'count': c['count']}
+            for c in customers_by_source
+        ]
+
+        return Response(data)

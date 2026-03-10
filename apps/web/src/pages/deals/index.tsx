@@ -7,11 +7,13 @@ import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
 import { Plus, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
 import { api } from '../../shared/api/client';
 import { PageHeader } from '../../shared/ui/PageHeader';
 import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { Drawer } from '../../shared/ui/Drawer';
 import { toast } from 'sonner';
 
 interface DealCard {
@@ -41,14 +43,14 @@ function DealCardItem({ deal, isDragging }: { deal:DealCard; isDragging?:boolean
       layout
       onClick={() => !isDragging && navigate(`/deals/${deal.id}`)}
       style={{
-        background:    'var(--color-bg-elevated)',
-        border:        '1px solid var(--color-border)',
-        borderRadius:  'var(--radius-md)',
-        padding:       '12px',
-        cursor:        'pointer',
-        boxShadow:     isDragging ? 'var(--shadow-lg)' : 'var(--shadow-xs)',
-        opacity:       isDragging ? 0.95 : 1,
-        transform:     isDragging ? 'rotate(1.5deg)' : undefined,
+        background: 'var(--color-bg-elevated)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-md)',
+        padding: '12px',
+        cursor: 'pointer',
+        boxShadow: isDragging ? 'var(--shadow-lg)' : 'var(--shadow-xs)',
+        opacity: isDragging ? 0.95 : 1,
+        transform: isDragging ? 'rotate(1.5deg)' : undefined,
       }}
     >
       <div style={{ fontSize:13, fontWeight:500, marginBottom:6 }}>{deal.title}</div>
@@ -79,12 +81,12 @@ function SortableDealCard({ deal }: { deal:DealCard }) {
 function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean }) {
   const typeColors: Record<string, { header:string; dot:string }> = {
     open: { header:'var(--color-bg-muted)', dot:'#9CA3AF' },
-    won:  { header:'#D1FAE5',              dot:'#10B981' },
-    lost: { header:'#FEE2E2',              dot:'#EF4444' },
+    won: { header:'#D1FAE5', dot:'#10B981' },
+    lost: { header:'#FEE2E2', dot:'#EF4444' },
   };
   const tc = typeColors[stage.type] ?? typeColors.open;
   const total = stage.deals.reduce((sum, d) => sum + (d.amount ?? 0), 0);
-  const fmt   = (n:number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits:0 }).format(n);
+  const fmt = (n:number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits:0 }).format(n);
 
   return (
     <div style={{
@@ -96,7 +98,6 @@ function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean })
       overflow:'hidden',
       maxHeight:'calc(100vh - 160px)',
     }}>
-      {/* Column header */}
       <div style={{
         padding:'12px 14px',
         background:tc.header,
@@ -116,7 +117,6 @@ function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean })
         )}
       </div>
 
-      {/* Cards */}
       <div style={{ flex:1, overflowY:'auto', padding:'10px', display:'flex', flexDirection:'column', gap:8 }}>
         <SortableContext items={stage.deals.map(d=>d.id)} strategy={verticalListSortingStrategy}>
           {isLoading
@@ -132,21 +132,41 @@ function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean })
 }
 
 export default function DealsPage() {
-  const qc      = useQueryClient();
+  const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string|null>(null);
+  const [createDrawer, setCreateDrawer] = useState(false);
+
+  const { data: customers } = useQuery<{ results: Array<{ id: string; full_name: string }> }>({
+    queryKey: ['customers-select'],
+    queryFn: () => api.get('/customers/', { page_size: 100 }),
+  });
+
+  const { register: regCreate, handleSubmit: handleCreate, reset: resetCreate, formState: { isSubmitting: creating } } = useForm<{
+    title: string; amount?: number; customer_id?: string; expected_close_date?: string;
+  }>();
+
+  const createDealMutation = useMutation({
+    mutationFn: (data: object) => api.post('/deals/', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['deals-board'] });
+      toast.success('Сделка создана');
+      setCreateDrawer(false);
+      resetCreate();
+    },
+  });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint:{ distance:8 } }));
 
   const { data:board, isLoading } = useQuery<BoardData>({
     queryKey: ['deals-board'],
-    queryFn:  () => api.get('/deals/board'),
+    queryFn: () => api.get('/deals/board'),
   });
 
   const changeStage = useMutation({
     mutationFn: ({ dealId, stageId }:{ dealId:string; stageId:string }) =>
       api.post(`/deals/${dealId}/change_stage/`, { stage_id:stageId }),
     onSuccess: () => qc.invalidateQueries({ queryKey:['deals-board'] }),
-    onError:   () => toast.error('Ошибка при перемещении'),
+    onError: () => toast.error('Ошибка при перемещении'),
   });
 
   const activeDeal = board?.stages.flatMap(s=>s.deals).find(d=>d.id===activeId);
@@ -155,7 +175,6 @@ export default function DealsPage() {
     const { active, over } = event;
     setActiveId(null);
     if (!over || active.id === over.id) return;
-    // find which stage "over" is in
     const targetStage = board?.stages.find(s => s.id === over.id || s.deals.some(d=>d.id===over.id));
     if (!targetStage) return;
     changeStage.mutate({ dealId:active.id, stageId:targetStage.id });
@@ -168,7 +187,7 @@ export default function DealsPage() {
       <PageHeader
         title="Сделки"
         subtitle={board?.pipeline?.name ?? ''}
-        actions={<Button icon={<Plus size={15}/>} onClick={()=>{}}>Новая сделка</Button>}
+        actions={<Button icon={<Plus size={15}/>} onClick={() => setCreateDrawer(true)}>Новая сделка</Button>}
       />
 
       {!isLoading && totalDeals === 0 && (
@@ -189,6 +208,41 @@ export default function DealsPage() {
           {activeDeal && <DealCardItem deal={activeDeal} isDragging />}
         </DragOverlay>
       </DndContext>
+
+      <Drawer
+        open={createDrawer}
+        onClose={() => setCreateDrawer(false)}
+        title="Новая сделка"
+        subtitle="Добавить сделку в воронку"
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => setCreateDrawer(false)}>Отмена</Button>
+            <Button loading={creating} onClick={handleCreate(d => createDealMutation.mutate(d))}>Создать</Button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>Название *</label>
+            <input {...regCreate('title', { required: true })} className="crm-input" placeholder="Проект / Заказ / Клиент" />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>Сумма</label>
+            <input {...regCreate('amount')} type="number" className="crm-input" placeholder="0" />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>Клиент</label>
+            <select {...regCreate('customer_id')} className="crm-select">
+              <option value="">— Выбрать клиента —</option>
+              {(customers?.results ?? []).map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>Дата закрытия</label>
+            <input {...regCreate('expected_close_date')} type="date" className="crm-input" />
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }

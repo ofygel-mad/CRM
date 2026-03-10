@@ -1,22 +1,40 @@
-.PHONY: up down logs api-shell migrate makemigrations test-api
+.PHONY: dev prod migrate makemigrations shell createsuperuser logs-api logs-worker test lint-frontend build-frontend import-fixtures reset-db
 
-up:
-	docker compose up --build -d
+dev:
+	docker-compose up --build
 
-down:
-	docker compose down -v
-
-logs:
-	docker compose logs -f --tail=200
-
-api-shell:
-	docker compose exec api python manage.py shell
+prod:
+	docker-compose -f docker-compose.prod.yml up -d --build
 
 migrate:
-	docker compose exec api python manage.py migrate
+	docker-compose exec api python manage.py migrate
 
 makemigrations:
-	docker compose exec api python manage.py makemigrations
+	docker-compose exec api python manage.py makemigrations
 
-test-api:
-	docker compose exec api pytest -q
+shell:
+	docker-compose exec api python manage.py shell_plus
+
+createsuperuser:
+	docker-compose exec api python manage.py createsuperuser
+
+logs-api:
+	docker-compose logs -f api
+
+logs-worker:
+	docker-compose logs -f worker
+
+test:
+	docker-compose exec api python manage.py test --verbosity=2
+
+lint-frontend:
+	cd apps/web && npm run lint
+
+build-frontend:
+	cd apps/web && npm run build
+
+import-fixtures:
+	docker-compose exec api python manage.py loaddata fixtures/demo.json
+
+reset-db:
+	docker-compose down -v && docker-compose up -d postgres && sleep 3 && $(MAKE) migrate
