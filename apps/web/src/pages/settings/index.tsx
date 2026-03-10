@@ -12,6 +12,7 @@ import { Badge } from '../../shared/ui/Badge';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { useRole } from '../../shared/hooks/useRole';
 
 interface Pipeline { id: string; name: string; is_default: boolean; stages: PipelineStage[]; }
 interface PipelineStage { id: string; name: string; stage_type: string; color: string; position: number; }
@@ -47,7 +48,7 @@ const MODE_COLORS: Record<string, string> = {
 };
 
 interface OrgData { id: string; name: string; mode: string; industry: string; company_size: string; timezone: string; currency: string; }
-interface UserItem { id: string; full_name: string; email: string; status: string; }
+interface UserItem { id: string; full_name: string; email: string; status: string; role?: string; }
 
 function OrgSection() {
   const qc = useQueryClient();
@@ -73,7 +74,22 @@ function OrgSection() {
 }
 
 function TeamSection() {
-  const { data, isLoading } = useQuery<{ results: UserItem[] }>({ queryKey: ['users'], queryFn: () => api.get('/users/') });
+  const qc = useQueryClient();
+  const { isAdmin } = useRole();
+  const { data: team, isLoading } = useQuery<{ results: UserItem[] }>({
+    queryKey: ['team'],
+    queryFn: () => api.get('/users/team/'),
+  });
+
+  const setRole = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
+      api.patch(`/users/${userId}/role/`, { role }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['team'] });
+      toast.success('Роль обновлена');
+    },
+  });
+
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
@@ -81,20 +97,34 @@ function TeamSection() {
       </div>
       <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
         {isLoading ? [1, 2, 3].map(i => <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}><Skeleton height={14} width="50%"/></div>)
-          : (data?.results ?? []).map(user => (
-            <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>
+          : (team?.results ?? []).map(member => (
+            <div key={member.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 32, height: 32, borderRadius: 'var(--radius-full)', background: 'var(--color-amber-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--color-amber)' }}>
-                  {user.full_name.charAt(0)}
+                  {member.full_name.charAt(0)}
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{user.full_name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{user.email}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{member.full_name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{member.email}</div>
                 </div>
               </div>
-              <Badge bg={user.status === 'active' ? '#D1FAE5' : '#F3F4F6'} color={user.status === 'active' ? '#065F46' : '#6B7280'}>
-                {user.status === 'active' ? 'Активен' : 'Неактивен'}
-              </Badge>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Badge bg={member.status === 'active' ? '#D1FAE5' : '#F3F4F6'} color={member.status === 'active' ? '#065F46' : '#6B7280'}>
+                  {member.status === 'active' ? 'Активен' : 'Неактивен'}
+                </Badge>
+                {isAdmin && (
+                  <select
+                    value={member.role ?? 'viewer'}
+                    onChange={(e) => setRole.mutate({ userId: member.id, role: e.target.value })}
+                    className="crm-input"
+                    style={{ fontSize: 12, padding: '3px 8px', width: 'auto' }}
+                  >
+                    <option value="admin">Администратор</option>
+                    <option value="manager">Менеджер</option>
+                    <option value="viewer">Наблюдатель</option>
+                  </select>
+                )}
+              </div>
             </div>
           ))
         }
@@ -102,7 +132,6 @@ function TeamSection() {
     </div>
   );
 }
-
 function PipelinesSection() {
   const qc = useQueryClient();
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
