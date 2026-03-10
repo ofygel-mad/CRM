@@ -1,5 +1,6 @@
 from openpyxl.utils import get_column_letter
 
+from apps.spreadsheets.domain import SpreadsheetDocumentStatus
 from apps.spreadsheets.models import SpreadsheetDocument, SpreadsheetSheet, SpreadsheetStyleSnapshot, SpreadsheetVersion
 from apps.spreadsheets.services.analysis.detect_formulas import detect_formulas
 from apps.spreadsheets.services.analysis.detect_headers import detect_headers
@@ -26,8 +27,8 @@ def analyze_workbook(*, version: SpreadsheetVersion, workbook) -> None:
             position=sheet_meta["position"],
             max_row=sheet_meta["max_row"],
             max_col=sheet_meta["max_col"],
-            detected_table_ranges=[],
-            metadata={
+            detected_table_ranges_json=[],
+            metadata_json={
                 "headers": headers.get(sheet_name, {}),
                 "formula_count": formulas.get(sheet_name, 0),
                 "style_stats": style_stats.get(sheet_name, {}),
@@ -40,13 +41,13 @@ def analyze_workbook(*, version: SpreadsheetVersion, workbook) -> None:
             range_ref=(
                 f"A1:{get_column_letter(max(workbook[sheet_name].max_column, 1))}{max(workbook[sheet_name].max_row, 1)}"
             ),
-            merged_ranges=merged_ranges.get(sheet_name, []),
-            style=style_stats.get(sheet_name, {}),
-            freeze_panes={"value": style_stats.get(sheet_name, {}).get("freeze_panes")},
-            filters={"enabled": style_stats.get(sheet_name, {}).get("has_auto_filter")},
+            merged_ranges_json=merged_ranges.get(sheet_name, []),
+            style_json=style_stats.get(sheet_name, {}),
+            freeze_panes_json={"value": style_stats.get(sheet_name, {}).get("freeze_panes")},
+            filters_json={"enabled": style_stats.get(sheet_name, {}).get("has_auto_filter")},
         )
 
     SpreadsheetDocument.objects.filter(id=version.document_id).update(
-        status=SpreadsheetDocument.Status.READY,
+        status=SpreadsheetDocumentStatus.READY,
         current_version=version,
     )

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from django.db import transaction
 
+from apps.spreadsheets.domain import SpreadsheetDocumentStatus, SpreadsheetVersionSourceType
 from apps.spreadsheets.models import SpreadsheetDocument, SpreadsheetVersion
 from apps.spreadsheets.tasks import analyze_spreadsheet_version
 
@@ -22,12 +23,12 @@ def upload_workbook(*, organization_id: UUID, uploaded_by_user_id: UUID, title: 
         mime_type=mime_type,
         uploaded_by_user_id=uploaded_by_user_id,
         storage_key=storage_key,
-        status=SpreadsheetDocument.Status.ANALYZING,
+        status=SpreadsheetDocumentStatus.ANALYZING,
     )
     version = SpreadsheetVersion.objects.create(
         document=document,
         version_number=1,
-        source_type=SpreadsheetVersion.SourceType.UPLOADED,
+        source_type=SpreadsheetVersionSourceType.UPLOADED,
         storage_key=storage_key,
         created_by_user_id=uploaded_by_user_id,
     )
