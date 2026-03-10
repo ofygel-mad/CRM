@@ -1,1 +1,1 @@
-export type Customer = { id: string; name: string };
+export interface Customer { id: string; full_name: string; company_name: string; phone: string; email: string; source: string; status: 'new' | 'active' | 'inactive' | 'archived'; owner: { id: string; full_name: string } | null; tags: string[]; created_at: string; updated_at: string; }

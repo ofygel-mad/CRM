@@ -1,1 +1,1 @@
-export function DashboardPage() { return <main>CRM Dashboard Skeleton</main>; }
+export default function DashboardPage() { return <div>Dashboard</div>; }

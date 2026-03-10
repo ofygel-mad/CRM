@@ -1,0 +1,2 @@
+import { useLocation } from 'react-router-dom';
+export function Topbar() { const location = useLocation(); return <header style={{ height: 'var(--topbar-height)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', padding: '0 16px', background: 'var(--color-bg-elevated)' }}><span style={{ color: 'var(--color-text-secondary)' }}>{location.pathname === '/' ? 'Главная' : location.pathname.slice(1)}</span></header>; }
