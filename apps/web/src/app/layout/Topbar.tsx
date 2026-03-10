@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search, ChevronRight, Bell } from 'lucide-react';
+import { Search, ChevronRight, Bell, Sun, Moon, Monitor } from 'lucide-react';
 import { useCommandPalette } from '../../shared/stores/commandPalette';
 import { useAuthStore } from '../../shared/stores/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../../shared/api/client';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSSE } from '../../shared/hooks/useSSE';
+import { useUIStore } from '../../shared/stores/ui';
 
 interface Notification { id: string; title: string; body: string; is_read: boolean; created_at: string; }
 
@@ -128,6 +129,7 @@ export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNod
   const user = useAuthStore(s => s.user);
 
   const crumb = BREADCRUMBS[location.pathname] ?? location.pathname.slice(1);
+  const { theme, setTheme } = useUIStore();
 
   return (
     <header style={{
@@ -176,6 +178,27 @@ export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNod
         </button>
 
         <NotificationBell />
+
+        <div style={{ display: 'flex', background: 'var(--color-bg-muted)', borderRadius: 'var(--radius-md)', padding: 2, gap: 1 }}>
+          {([['light', Sun], ['dark', Moon], ['system', Monitor]] as const).map(([t, Icon]) => (
+            <motion.button
+              key={t}
+              onClick={() => setTheme(t)}
+              whileTap={{ scale: 0.88 }}
+              title={{ light: 'Светлая', dark: 'Тёмная', system: 'Системная' }[t]}
+              style={{
+                width: 26, height: 26, borderRadius: 6, border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: theme === t ? 'var(--color-bg-elevated)' : 'transparent',
+                color: theme === t ? 'var(--color-amber)' : 'var(--color-text-muted)',
+                boxShadow: theme === t ? 'var(--shadow-xs)' : 'none',
+                transition: 'all var(--transition-fast)',
+              }}
+            >
+              <Icon size={13} strokeWidth={1.75} />
+            </motion.button>
+          ))}
+        </div>
 
         <button
           onClick={() => navigate('/settings')}
