@@ -121,6 +121,21 @@ class DealViewSet(viewsets.ModelViewSet):
                 deal.closed_at = None
             deal.save()
 
+            from apps.automations.services.event_publisher import publish_event
+            publish_event(
+                organization_id=deal.organization_id,
+                event_type='deal.stage_changed',
+                entity_type='deal',
+                entity_id=deal.id,
+                actor_id=request.user.id,
+                payload={
+                    'old_stage_id': str(old_stage.id),
+                    'new_stage_id': str(new_stage.id),
+                    'new_stage_type': new_stage.stage_type,
+                },
+                dedupe_key=f'deal_stage_{deal.id}_{new_stage.id}',
+            )
+
             from apps.activities.models import Activity
             Activity.objects.create(
                 organization=request.user.organization,

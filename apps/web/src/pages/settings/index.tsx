@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Users, GitBranch, Shield } from 'lucide-react';
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Pencil, Trash2, Building2, Users, GitBranch, Shield } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../../shared/api/client';
 import { PageHeader } from '../../shared/ui/PageHeader';
 import { Button } from '../../shared/ui/Button';
@@ -9,6 +12,25 @@ import { Badge } from '../../shared/ui/Badge';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+
+interface Pipeline { id: string; name: string; is_default: boolean; stages: PipelineStage[]; }
+interface PipelineStage { id: string; name: string; stage_type: string; color: string; position: number; }
+
+function SortableStageRow({ stage, onEdit, onDelete, typeLabel, typeColor }: {
+  stage: PipelineStage; onEdit: () => void; onDelete: () => void; typeLabel: string; typeColor: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: stage.id });
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div {...attributes} {...listeners} style={{ cursor: 'grab', color: 'var(--color-text-muted)', display: 'flex' }}><GripVertical size={16}/></div>
+      <div style={{ width: 12, height: 12, borderRadius: 'var(--radius-sm)', background: stage.color, flexShrink: 0 }}/>
+      <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{stage.name}</div>
+      <span style={{ fontSize: 11, color: typeColor, fontWeight: 600 }}>{typeLabel}</span>
+      <button onClick={onEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', padding: 4, borderRadius: 'var(--radius-sm)' }}><Pencil size={13}/></button>
+      <button onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: 4, borderRadius: 'var(--radius-sm)' }}><Trash2 size={13}/></button>
+    </div>
+  );
+}
 
 const SECTIONS = [
   { key: 'organization', label: 'Организация', icon: <Building2 size={16}/> },
@@ -77,6 +99,173 @@ function TeamSection() {
           ))
         }
       </div>
+    </div>
+  );
+}
+
+function PipelinesSection() {
+  const qc = useQueryClient();
+  const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
+  const [addingStage, setAddingStage] = useState(false);
+  const [newStageName, setNewStageName] = useState('');
+  const [editingStage, setEditingStage] = useState<{ id: string; name: string; color: string } | null>(null);
+
+  const { data: pipelines, isLoading } = useQuery<Pipeline[]>({
+    queryKey: ['pipelines'],
+    queryFn: () => api.get('/pipelines/'),
+    select: (d: any) => d.results ?? d,
+  });
+
+  const pipeline = pipelines?.find(p => p.id === selectedPipeline) ?? pipelines?.[0] ?? null;
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const [stages, setStages] = useState<PipelineStage[]>([]);
+
+  useEffect(() => {
+    if (pipeline?.stages) setStages([...pipeline.stages].sort((a, b) => a.position - b.position));
+  }, [pipeline]);
+
+  const reorderMutation = useMutation({
+    mutationFn: ({ pipelineId, order }: { pipelineId: string; order: string[] }) =>
+      api.post(`/pipelines/${pipelineId}/stages/reorder/`, { order }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipelines'] }),
+  });
+
+  const addStageMutation = useMutation({
+    mutationFn: ({ pipelineId, name }: { pipelineId: string; name: string }) =>
+      api.post(`/pipelines/${pipelineId}/stages/`, { name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pipelines'] });
+      setNewStageName('');
+      setAddingStage(false);
+      toast.success('Стадия добавлена');
+    },
+  });
+
+  const deleteStageMutation = useMutation({
+    mutationFn: ({ pipelineId, stageId }: { pipelineId: string; stageId: string }) =>
+      api.delete(`/pipelines/${pipelineId}/stages/${stageId}/`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['pipelines'] }); toast.success('Удалено'); },
+    onError: () => toast.error('Нельзя удалить: есть активные сделки'),
+  });
+
+  const updateStageMutation = useMutation({
+    mutationFn: ({ pipelineId, stageId, data }: { pipelineId: string; stageId: string; data: any }) =>
+      api.patch(`/pipelines/${pipelineId}/stages/${stageId}/`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['pipelines'] }); setEditingStage(null); },
+  });
+
+  function handleDragEnd(event: any) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !pipeline) return;
+    const oldIndex = stages.findIndex(s => s.id === active.id);
+    const newIndex = stages.findIndex(s => s.id === over.id);
+    const reordered = arrayMove(stages, oldIndex, newIndex);
+    setStages(reordered);
+    reorderMutation.mutate({ pipelineId: pipeline.id, order: reordered.map(s => s.id) });
+  }
+
+  const STAGE_TYPE_LABELS: Record<string, string> = { open: 'Открыта', won: 'Выиграна', lost: 'Проиграна' };
+  const STAGE_TYPE_COLORS: Record<string, string> = { open: '#6B7280', won: '#10B981', lost: '#EF4444' };
+  const PALETTE = ['#6B7280','#3B82F6','#8B5CF6','#F59E0B','#EF4444','#10B981','#EC4899','#06B6D4'];
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}><Skeleton height={20} width="60%"/></div>;
+
+  return (
+    <div style={{ display: 'flex', gap: 24, height: '100%' }}>
+      <div style={{ width: 200, flexShrink: 0 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Воронки</div>
+        {(pipelines ?? []).map(p => (
+          <div
+            key={p.id}
+            onClick={() => setSelectedPipeline(p.id)}
+            style={{
+              padding: '8px 12px', borderRadius: 'var(--radius-md)', cursor: 'pointer', marginBottom: 4, fontSize: 13,
+              background: (pipeline?.id === p.id) ? 'var(--color-bg-muted)' : 'transparent',
+              fontWeight: (pipeline?.id === p.id) ? 600 : 400,
+              color: (pipeline?.id === p.id) ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+            }}
+          >
+            {p.name}
+            {p.is_default && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--color-amber)', fontWeight: 600 }}>DEFAULT</span>}
+          </div>
+        ))}
+      </div>
+
+      {pipeline && (
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{pipeline.name}</div>
+            <Button size="sm" variant="amber-outline" onClick={() => setAddingStage(true)}>+ Стадия</Button>
+          </div>
+
+          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+            <SortableContext items={stages.map(s => s.id)} strategy={verticalListSortingStrategy}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {stages.map(stage => (
+                  <SortableStageRow
+                    key={stage.id}
+                    stage={stage}
+                    onEdit={() => setEditingStage({ id: stage.id, name: stage.name, color: stage.color })}
+                    onDelete={() => deleteStageMutation.mutate({ pipelineId: pipeline.id, stageId: stage.id })}
+                    typeLabel={STAGE_TYPE_LABELS[stage.stage_type]}
+                    typeColor={STAGE_TYPE_COLORS[stage.stage_type]}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          <AnimatePresence>
+            {addingStage && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                style={{ marginTop: 8, background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  autoFocus
+                  value={newStageName}
+                  onChange={e => setNewStageName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addStageMutation.mutate({ pipelineId: pipeline.id, name: newStageName }); if (e.key === 'Escape') setAddingStage(false); }}
+                  placeholder="Название стадии..."
+                  className="crm-input"
+                  style={{ flex: 1, fontSize: 13 }}
+                />
+                <Button size="sm" loading={addStageMutation.isPending} onClick={() => addStageMutation.mutate({ pipelineId: pipeline.id, name: newStageName })}>Добавить</Button>
+                <Button size="sm" variant="ghost" onClick={() => setAddingStage(false)}>Отмена</Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {editingStage && (
+            <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg-overlay)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                style={{ background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-xl)', padding: 24, width: 360, boxShadow: 'var(--shadow-xl)' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 20 }}>Редактировать стадию</div>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Название</label>
+                  <input
+                    value={editingStage.name}
+                    onChange={e => setEditingStage(s => s ? { ...s, name: e.target.value } : null)}
+                    className="crm-input"
+                  />
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 8 }}>Цвет</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {PALETTE.map(c => (
+                      <div key={c} onClick={() => setEditingStage(s => s ? { ...s, color: c } : null)}
+                        style={{ width: 28, height: 28, borderRadius: 'var(--radius-md)', background: c, cursor: 'pointer', border: editingStage.color === c ? '3px solid var(--color-text-primary)' : '3px solid transparent', transition: 'border var(--transition-fast)' }}/>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <Button variant="ghost" onClick={() => setEditingStage(null)}>Отмена</Button>
+                  <Button loading={updateStageMutation.isPending} onClick={() => updateStageMutation.mutate({ pipelineId: pipeline.id, stageId: editingStage.id, data: { name: editingStage.name, color: editingStage.color } })}>Сохранить</Button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -160,11 +349,7 @@ export default function SettingsPage() {
             {activeSection === 'organization' && <OrgSection />}
             {activeSection === 'team' && <TeamSection />}
             {activeSection === 'mode' && <ModeSection />}
-            {activeSection === 'pipelines' && (
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                Управление воронками будет добавлено в следующем обновлении.
-              </div>
-            )}
+            {activeSection === 'pipelines' && <PipelinesSection />}
           </motion.div>
         </AnimatePresence>
       </div>

@@ -24,9 +24,19 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return CustomerListSerializer if self.action == 'list' else CustomerSerializer
 
     def perform_create(self, serializer):
-        serializer.save(
+        instance = serializer.save(
             organization=self.request.user.organization,
             owner=self.request.user,
+        )
+
+        from apps.automations.services.event_publisher import publish_event
+        publish_event(
+            organization_id=instance.organization_id,
+            event_type='customer.created',
+            entity_type='customer',
+            entity_id=instance.id,
+            actor_id=self.request.user.id,
+            payload={'status': instance.status, 'source': instance.source or ''},
         )
 
     def perform_destroy(self, instance):

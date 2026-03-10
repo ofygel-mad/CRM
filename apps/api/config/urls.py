@@ -16,6 +16,8 @@ urlpatterns = [
     path('api/v1/', include('apps.deals.api.urls')),
     path('api/v1/', include('apps.pipelines.api.urls')),
     path('api/v1/', include('apps.tasks.api.urls')),
+    path('api/v1/', include('apps.automations.api.urls')),
+    path('api/v1/', include('apps.notifications.api.urls')),
     path('api/v1/', include('apps.activities.api.urls')),
     path('api/v1/', include('apps.imports.api.urls')),
     path('api/v1/', include('apps.reports.api.urls')),
