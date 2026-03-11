@@ -13,6 +13,7 @@ import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { useAuthStore } from '../../shared/stores/auth';
 import { api } from '../../shared/api/client';
 import { MobileFab } from '../../shared/ui/MobileFab';
+import { AiAssistant } from '../../widgets/ai-assistant/AiAssistant';
 
 export function AppShell() {
   const { isOpen, toggle } = useCommandPalette();
@@ -97,6 +98,7 @@ export function AppShell() {
 
       {isMobile && <MobileNav />}
       <MobileFab />
+      <AiAssistant />
 
       <AnimatePresence>{isOpen && <CommandPalette />}</AnimatePresence>
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

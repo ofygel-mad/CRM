@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuthStore } from "../../../shared/stores/auth";
+import { useConvert } from "../../../shared/hooks/useExchangeRates";
 
 interface Stage {
   id: string;
@@ -101,10 +102,14 @@ function InlineAmount({
   value,
   currency,
   onSave,
+  orgCurrency,
+  convert,
 }: {
   value: number | null;
   currency: string;
   onSave: (v: number) => void;
+  orgCurrency: string;
+  convert: (amount: number, from: string, to?: string) => number;
 }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(value ?? ""));
@@ -176,6 +181,13 @@ function InlineAmount({
           </span>
         )}
       </span>
+      {value && currency !== orgCurrency && (
+        <span style={{ fontSize: 13, color: "var(--color-text-muted)", marginLeft: 6 }}>
+          ≈ {new Intl.NumberFormat("ru-KZ", { maximumFractionDigits: 0 }).format(
+            convert(Number(value), currency, orgCurrency),
+          )} {currencySymbol(orgCurrency)}
+        </span>
+      )}
       <Edit3
         size={13}
         style={{ color: "var(--color-text-muted)", opacity: 0.4 }}
@@ -556,6 +568,8 @@ export default function DealProfilePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const token = useAuthStore((state) => state.token);
+  const orgCurrency = useAuthStore((s) => s.org?.currency ?? "KZT");
+  const convert = useConvert();
   const [tab, setTab] = useState<Tab>("activity");
   const [editDrawer, setEditDrawer] = useState(false);
   const [newTask, setNewTask] = useState(false);
@@ -704,6 +718,8 @@ export default function DealProfilePage() {
                   value={deal.amount}
                   currency={deal.currency}
                   onSave={(v) => updateAmount.mutate(v)}
+                  orgCurrency={orgCurrency}
+                  convert={convert}
                 />
               </div>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>

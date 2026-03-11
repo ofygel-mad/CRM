@@ -44,6 +44,25 @@ def publish_event(
         from apps.automations.tasks import process_domain_event
 
         process_domain_event.delay(str(event.id))
+
+        try:
+            from apps.webhooks.tasks import dispatch_webhooks
+
+            dispatch_webhooks(
+                organization_id=str(organization_id),
+                event_type=event_type,
+                payload={
+                    'event': event_type,
+                    'entity_type': entity_type,
+                    'entity_id': str(entity_id),
+                    'actor_id': str(actor_id) if actor_id else None,
+                    'occurred_at': event.occurred_at.isoformat(),
+                    'data': payload,
+                },
+            )
+        except Exception as exc:
+            logger.warning('Webhook dispatch failed: %s', exc)
+
         return event
 
     except Exception as exc:
