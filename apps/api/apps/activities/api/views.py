@@ -20,11 +20,25 @@ class ActivityListView(ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         body = request.data.get('body', '').strip()
+        act_type = request.data.get('type', 'note')
         customer_id = request.data.get('customer_id')
         deal_id = request.data.get('deal_id')
-        if not body:
+
+        if not body and act_type == 'note':
             from rest_framework.response import Response
             return Response({'body': ['This field is required.']}, status=400)
+
+        allowed_manual_types = ('note', 'call', 'whatsapp', 'email_sent', 'email_in')
+        if act_type not in allowed_manual_types:
+            from rest_framework.response import Response
+            return Response({'type': ['Invalid type.']}, status=400)
+
+        payload = {'body': body}
+        if act_type in ('email_sent', 'email_in'):
+            payload['subject'] = request.data.get('subject', '')
+            payload['preview'] = body[:200]
+        if act_type == 'call':
+            payload['duration_minutes'] = request.data.get('duration_minutes')
 
         note = Note.objects.create(
             organization=request.user.organization,
@@ -38,8 +52,8 @@ class ActivityListView(ListCreateAPIView):
             actor=request.user,
             customer_id=customer_id,
             deal_id=deal_id,
-            type='note',
-            payload={'body': body, 'note_id': str(note.id)},
+            type=act_type,
+            payload={**payload, 'note_id': str(note.id)},
         )
         from rest_framework.response import Response
         return Response(ActivitySerializer(activity).data, status=201)

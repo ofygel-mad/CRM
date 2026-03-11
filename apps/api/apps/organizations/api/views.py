@@ -119,3 +119,33 @@ class CustomFieldViewSet(viewsets.ModelViewSet):
         result = {v.field.field_key: v.value_json for v in values}
         schema = CustomFieldSerializer(fields, many=True).data
         return Response({'schema': schema, 'values': result})
+
+
+class OrganizationActionsViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['post'], url_path='email-test')
+    def email_test(self, request):
+        """Проверить SMTP подключение."""
+        import smtplib
+        import ssl
+
+        org = request.user.organization
+        host = request.data.get('email_host', org.email_host)
+        port = int(request.data.get('email_port', org.email_port))
+        user = request.data.get('email_username', org.email_username)
+        password = request.data.get('email_password', org.email_password)
+        use_tls = request.data.get('email_use_tls', org.email_use_tls)
+
+        if isinstance(use_tls, str):
+            use_tls = use_tls.lower() == 'true'
+
+        try:
+            context = ssl.create_default_context()
+            with smtplib.SMTP(host, port, timeout=5) as smtp:
+                if use_tls:
+                    smtp.starttls(context=context)
+                smtp.login(user, password)
+            return Response({'ok': True, 'message': 'Подключение успешно'})
+        except Exception as exc:
+            return Response({'ok': False, 'message': str(exc)}, status=400)

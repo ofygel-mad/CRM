@@ -7,4 +7,5 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ['id', 'name', 'slug', 'mode', 'industry', 'company_size',
                   'timezone', 'currency', 'logo_url', 'onboarding_completed',
-                  'created_at']
+                  'email_host', 'email_port', 'email_username', 'email_password',
+                  'email_use_tls', 'email_from', 'created_at']
