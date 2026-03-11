@@ -8,7 +8,6 @@ from rest_framework.response import Response
 from django.conf import settings
 from apps.imports.models import ImportJob
 from apps.imports.serializers import ImportJobSerializer
-from apps.imports.services.file_analyzer import analyze_file
 
 logger = logging.getLogger(__name__)
 

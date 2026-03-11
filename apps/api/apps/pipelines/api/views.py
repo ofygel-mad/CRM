@@ -1,11 +1,10 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
 from ..models import Pipeline, PipelineStage
 from ..serializers import PipelineSerializer, PipelineStageSerializer
-from apps.core.services import ensure_default_pipeline
 
 
 class PipelineViewSet(viewsets.ModelViewSet):
