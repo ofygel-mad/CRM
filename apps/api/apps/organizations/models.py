@@ -31,6 +31,13 @@ class Organization(BaseModel):
     currency = models.CharField(max_length=3, default='KZT')
     logo_url = models.URLField(blank=True, null=True)
     onboarding_completed = models.BooleanField(default=False)
+    # Email integration (IMAP/SMTP)
+    email_host = models.CharField(max_length=255, blank=True)
+    email_port = models.PositiveSmallIntegerField(default=587)
+    email_username = models.CharField(max_length=255, blank=True)
+    email_password = models.CharField(max_length=512, blank=True)  # encrypted in prod
+    email_use_tls = models.BooleanField(default=True)
+    email_from = models.CharField(max_length=255, blank=True)
 
     class Meta:
         db_table = 'organizations'

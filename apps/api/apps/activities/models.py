@@ -7,11 +7,15 @@ class Activity(BaseModel):
         NOTE = 'note', 'Заметка'
         CALL = 'call', 'Звонок'
         MESSAGE = 'message', 'Сообщение'
+        EMAIL_SENT = 'email_sent', 'Email отправлен'
+        EMAIL_IN = 'email_in', 'Email получен'
+        WHATSAPP = 'whatsapp', 'WhatsApp'
         STATUS_CHANGE = 'status_change', 'Смена статуса'
         STAGE_CHANGE = 'stage_change', 'Смена стадии'
         DEAL_CREATED = 'deal_created', 'Сделка создана'
         TASK_CREATED = 'task_created', 'Задача создана'
         TASK_DONE = 'task_done', 'Задача выполнена'
+        DOCUMENT_SENT = 'document_sent', 'Документ отправлен'
 
     organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='activities')
     actor = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)

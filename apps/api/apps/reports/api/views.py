@@ -2,6 +2,7 @@ import io
 from datetime import timedelta
 
 from django.core.cache import cache
+from django.db import models
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.http import HttpResponse, StreamingHttpResponse
@@ -214,3 +215,59 @@ class ReportExportView(APIView):
         resp = StreamingHttpResponse(stream(), content_type='text/csv; charset=utf-8')
         resp['Content-Disposition'] = 'attachment; filename="crm-export.csv"'
         return resp
+
+
+class ManagerKpiView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.deals.models import Deal
+        from apps.tasks.models import Task
+        from apps.customers.models import Customer
+
+        org = request.user.organization
+        now = timezone.now()
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        managers = list(
+            Deal.objects.filter(organization=org, created_at__gte=start)
+            .values('owner__id', 'owner__full_name')
+            .annotate(
+                deals_open=Count('id', filter=models.Q(status='open')),
+                deals_won=Count('id', filter=models.Q(status='won')),
+                deals_lost=Count('id', filter=models.Q(status='lost')),
+                revenue=Sum('amount', filter=models.Q(status='won')),
+            )
+            .order_by('-revenue')
+        )
+
+        result = []
+        for m in managers:
+            uid = m['owner__id']
+            total = (m['deals_won'] or 0) + (m['deals_lost'] or 0)
+            winrate = round(m['deals_won'] / total * 100, 1) if total else 0
+            tasks_done = Task.objects.filter(
+                organization=org,
+                assigned_to_id=uid,
+                status='done',
+                updated_at__gte=start,
+            ).count()
+            new_customers = Customer.objects.filter(
+                organization=org,
+                owner_id=uid,
+                created_at__gte=start,
+                deleted_at__isnull=True,
+            ).count()
+            result.append({
+                'id': str(uid),
+                'name': m['owner__full_name'] or 'Неизвестно',
+                'deals_open': m['deals_open'],
+                'deals_won': m['deals_won'],
+                'deals_lost': m['deals_lost'],
+                'win_rate': winrate,
+                'revenue': float(m['revenue'] or 0),
+                'tasks_done': tasks_done,
+                'new_customers': new_customers,
+            })
+
+        return Response({'managers': result, 'period': start.strftime('%B %Y')})

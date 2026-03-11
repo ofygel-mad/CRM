@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import DashboardSummaryView, ReportExportView, ExportCustomersExcelView, ExportDealsExcelView
+from .views import DashboardSummaryView, ReportExportView, ExportCustomersExcelView, ExportDealsExcelView, ManagerKpiView
 
 urlpatterns = [
     path('reports/dashboard',         DashboardSummaryView.as_view(),     name='reports-dashboard'),
@@ -7,4 +7,5 @@ urlpatterns = [
     path('reports/export/',           ReportExportView.as_view(),         name='report-export'),
     path('reports/export/customers/', ExportCustomersExcelView.as_view(), name='export-customers-excel'),
     path('reports/export/deals/',     ExportDealsExcelView.as_view(),     name='export-deals-excel'),
+    path('reports/manager-kpi/',       ManagerKpiView.as_view(),           name='reports-manager-kpi'),
 ]

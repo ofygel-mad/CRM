@@ -130,6 +130,93 @@ class DealViewSet(viewsets.ModelViewSet):
             for a in qs
         ]
         return Response({'results': data})
+
+    @action(detail=True, methods=['get'], url_path='invoice')
+    def invoice(self, request, pk=None):
+        """Генерировать PDF счёт для сделки."""
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib import colors
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import mm
+        except ImportError:
+            return Response({'error': 'reportlab не установлен. pip install reportlab'}, status=500)
+
+        import io
+        from django.http import HttpResponse
+
+        deal = self.get_object()
+        org = request.user.organization
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm, topMargin=20 * mm, bottomMargin=20 * mm)
+
+        styles = getSampleStyleSheet()
+        amber = colors.HexColor('#D97706')
+        gray = colors.HexColor('#6B7280')
+        story = []
+
+        header_data = [
+            [Paragraph(f'<b>{org.name}</b>', styles['Heading2']), Paragraph(f'<b>СЧЁТ № {str(deal.id)[:8].upper()}</b>', styles['Heading2'])],
+            [Paragraph(f'Дата: {deal.created_at.strftime("%d.%m.%Y")}', styles['Normal']), ''],
+        ]
+        header_table = Table(header_data, colWidths=[85 * mm, 85 * mm])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#111827')),
+        ]))
+        story.append(header_table)
+        story.append(Spacer(1, 8 * mm))
+
+        divider = Table([['']], colWidths=[170 * mm], rowHeights=[1])
+        divider.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), amber)]))
+        story.append(divider)
+        story.append(Spacer(1, 6 * mm))
+
+        if deal.customer:
+            story.append(Paragraph('<b>Получатель:</b>', styles['Normal']))
+            story.append(Paragraph(deal.customer.full_name, styles['Heading3']))
+            if deal.customer.company_name:
+                story.append(Paragraph(deal.customer.company_name, styles['Normal']))
+            if deal.customer.phone:
+                story.append(Paragraph(deal.customer.phone, styles['Normal']))
+            story.append(Spacer(1, 6 * mm))
+
+        currency_sym = {'KZT': '₸', 'RUB': '₽', 'USD': '$', 'EUR': '€'}.get(deal.currency, deal.currency)
+        amount_str = f'{float(deal.amount):,.0f} {currency_sym}' if deal.amount else '—'
+
+        table_data = [
+            ['№', 'Наименование', 'Сумма'],
+            ['1', deal.title, amount_str],
+            ['', Paragraph('<b>ИТОГО:</b>', styles['Normal']), Paragraph(f'<b>{amount_str}</b>', styles['Normal'])],
+        ]
+        t = Table(table_data, colWidths=[10 * mm, 130 * mm, 30 * mm])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), amber),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#FFFBF5')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('LINEABOVE', (0, -1), (-1, -1), 1.5, amber),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 10 * mm))
+
+        story.append(Paragraph(
+            f'Выставлен через CRM · {org.name}',
+            ParagraphStyle('footer', parent=styles['Normal'], textColor=gray, fontSize=8)
+        ))
+
+        doc.build(story)
+        buf.seek(0)
+        resp = HttpResponse(buf.read(), content_type='application/pdf')
+        resp['Content-Disposition'] = f'inline; filename="invoice-{str(deal.id)[:8]}.pdf"'
+        return resp
     @action(detail=True, methods=['post'])
     def change_stage(self, request, pk=None):
         deal = self.get_object()
