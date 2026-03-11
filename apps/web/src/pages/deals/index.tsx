@@ -9,6 +9,8 @@ import { Plus, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { api } from '../../shared/api/client';
+import { useAuthStore } from '../../shared/stores/auth';
+import { formatNumber, currencySymbol } from '../../shared/utils/format';
 import { PageHeader } from '../../shared/ui/PageHeader';
 import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -36,7 +38,7 @@ interface BoardData {
 
 function DealCardItem({ deal, isDragging }: { deal:DealCard; isDragging?:boolean }) {
   const navigate = useNavigate();
-  const fmt = (n:number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits:0 }).format(n);
+  const orgCurrency = useAuthStore((s) => s.org?.currency ?? 'KZT');
 
   return (
     <motion.div
@@ -62,7 +64,7 @@ function DealCardItem({ deal, isDragging }: { deal:DealCard; isDragging?:boolean
       )}
       {deal.amount && (
         <div style={{ fontSize:14, fontWeight:700, color:'var(--color-amber)', fontFamily:'var(--font-display)' }}>
-          {fmt(deal.amount)} {deal.currency === 'RUB' ? '₽' : deal.currency}
+          {formatNumber(deal.amount)} {currencySymbol(deal.currency || orgCurrency)}
         </div>
       )}
     </motion.div>
@@ -79,6 +81,7 @@ function SortableDealCard({ deal }: { deal:DealCard }) {
 }
 
 function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean }) {
+  const orgCurrency = useAuthStore((s) => s.org?.currency ?? 'KZT');
   const typeColors: Record<string, { header:string; dot:string }> = {
     open: { header:'var(--color-bg-muted)', dot:'#9CA3AF' },
     won: { header:'#D1FAE5', dot:'#10B981' },
@@ -86,7 +89,6 @@ function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean })
   };
   const tc = typeColors[stage.type] ?? typeColors.open;
   const total = stage.deals.reduce((sum, d) => sum + (d.amount ?? 0), 0);
-  const fmt = (n:number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits:0 }).format(n);
 
   return (
     <div style={{
@@ -112,7 +114,7 @@ function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean })
         </div>
         {total > 0 && (
           <div style={{ fontSize:12, color:'var(--color-text-muted)', paddingLeft:16 }}>
-            {fmt(total)} ₽
+            {formatNumber(total)} {currencySymbol(orgCurrency)}
           </div>
         )}
       </div>

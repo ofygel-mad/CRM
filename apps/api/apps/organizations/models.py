@@ -28,7 +28,7 @@ class Organization(BaseModel):
     industry = models.CharField(max_length=50, choices=Industry.choices, default=Industry.OTHER)
     company_size = models.CharField(max_length=20, choices=CompanySize.choices, default=CompanySize.XS)
     timezone = models.CharField(max_length=64, default='UTC')
-    currency = models.CharField(max_length=3, default='RUB')
+    currency = models.CharField(max_length=3, default='KZT')
     logo_url = models.URLField(blank=True, null=True)
     onboarding_completed = models.BooleanField(default=False)
 
@@ -55,7 +55,7 @@ MODE_CAPABILITIES = {
         'customers.read', 'customers.create', 'customers.update',
         'deals.read', 'deals.create', 'deals.update',
         'tasks.read', 'tasks.create', 'tasks.update',
-        'activities.read', 'reports.basic', 'imports.customers',
+        'activities.read', 'reports.basic', 'imports.customers', 'customers.import',
     ],
     'advanced': [
         'automations.manage', 'pipelines.multi', 'roles.manage',

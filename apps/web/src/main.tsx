@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { toast, Toaster } from 'sonner';
 import * as Sentry from '@sentry/react';
 import { AppRouter } from './app/router';
 import './shared/design/globals.css';
@@ -21,6 +22,15 @@ const queryClient = new QueryClient({
       staleTime: 30_000,
       retry: 1,
     },
+    mutations: {
+      onError: (error: any) => {
+        const msg = error?.response?.data?.detail
+          ?? error?.response?.data?.message
+          ?? error?.message
+          ?? 'Произошла ошибка';
+        toast.error(msg);
+      },
+    },
   },
 });
 
@@ -28,6 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AppRouter />
+      <Toaster position="bottom-right" richColors />
     </QueryClientProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

@@ -15,6 +15,7 @@ type Org = {
   name: string;
   slug: string;
   mode: 'basic' | 'advanced' | 'industrial';
+  currency: string;
   onboarding_completed?: boolean;
 };
 
