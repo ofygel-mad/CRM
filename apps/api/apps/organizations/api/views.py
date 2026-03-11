@@ -1,8 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from ..models import Organization
 from ..serializers import OrganizationSerializer
+from rest_framework import serializers, viewsets
+from rest_framework.decorators import action
+from apps.organizations.models import CustomField, CustomFieldValue
 
 
 class OrganizationView(APIView):
@@ -18,11 +20,6 @@ class OrganizationView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
-
-
-from rest_framework import serializers, viewsets
-from rest_framework.decorators import action
-from apps.organizations.models import CustomField, CustomFieldValue
 
 
 class CustomFieldSerializer(serializers.ModelSerializer):

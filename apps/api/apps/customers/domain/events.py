@@ -11,7 +11,7 @@ def publish_customer_created(*, customer, actor_id):
             actor_id=actor_id,
             customer=customer,
             type=Activity.Type.NOTE,
-            payload={'note': f'Клиент создан'},
+            payload={'note': 'Клиент создан'},
         )
     except Exception:
         pass
