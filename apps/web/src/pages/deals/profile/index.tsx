@@ -25,6 +25,7 @@ import { PageLoader } from '../../../shared/ui/PageLoader';
 import { EmptyState } from '../../../shared/ui/EmptyState';
 import { Drawer } from '../../../shared/ui/Drawer';
 import { Badge } from '../../../shared/ui/Badge';
+import { currencySymbol } from '../../../shared/utils/format';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow, differenceInDays } from 'date-fns';
@@ -87,7 +88,7 @@ function InlineAmount({
 }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(value ?? ''));
-  const symbol = currency === 'RUB' ? '₽' : currency;
+  const symbol = currencySymbol(currency);
 
   if (editing) {
     return (

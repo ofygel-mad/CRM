@@ -5,7 +5,6 @@ import { MobileNav } from './MobileNav';
 import { CommandPalette } from '../../widgets/command-palette/CommandPalette';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Toaster } from 'sonner';
 import { useCommandPalette } from '../../shared/stores/commandPalette';
 import { useUIStore } from '../../shared/stores/ui';
 import { useKeyboardShortcuts } from '../../shared/hooks/useKeyboardShortcuts';
@@ -99,7 +98,6 @@ export function AppShell() {
 
       <AnimatePresence>{isOpen && <CommandPalette />}</AnimatePresence>
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <Toaster position="bottom-right" richColors />
     </div>
   );
 }

@@ -55,7 +55,7 @@ export default function OnboardingPage() {
   const canNext = step === 0 ? (industry !== '' && companySize !== '') : true;
 
   function handleFinish() {
-    setupMutation.mutate({ mode: selectedMode, industry, company_size: companySize });
+    setupMutation.mutate({ mode: selectedMode, industry, company_size: companySize, onboarding_completed: true });
   }
 
   return (

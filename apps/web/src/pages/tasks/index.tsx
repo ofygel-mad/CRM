@@ -8,10 +8,19 @@ import { Button } from '../../shared/ui/Button';
 import { Badge } from '../../shared/ui/Badge';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { Drawer } from '../../shared/ui/Drawer';
 import { toast } from 'sonner';
 import { format, isPast, isToday } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
+import { useForm } from 'react-hook-form';
+
+interface TaskForm {
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' | 'high';
+  due_at?: string;
+}
 
 interface Task {
   id:string; title:string; description:string;
@@ -40,12 +49,26 @@ const FILTERS = [
 export default function TasksPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>('mine');
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<TaskForm>({
+    defaultValues: { priority: 'medium' },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: TaskForm) => api.post('/tasks/', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Задача создана');
+      setDrawerOpen(false);
+      reset();
+    },
+    onError: () => toast.error('Не удалось создать задачу'),
+  });
+
   useEffect(() => {
-    const handler = () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    const handler = () => setDrawerOpen(true);
     window.addEventListener('crm:new-task', handler);
     return () => window.removeEventListener('crm:new-task', handler);
   }, []);
@@ -70,10 +93,95 @@ export default function TasksPage() {
       <PageHeader
         title="Задачи"
         subtitle={data ? `${data.results?.length ?? 0} задач` : undefined}
-        actions={<Button icon={<Plus size={15}/>} size="sm">Новая задача</Button>}
+        actions={<Button icon={<Plus size={15}/>} size="sm" onClick={() => setDrawerOpen(true)}>Новая задача</Button>}
       />
 
-      {/* Filter tabs */}
+      <Drawer open={drawerOpen} onClose={() => { setDrawerOpen(false); reset(); }} title="Новая задача">
+        <form onSubmit={handleSubmit((d) => createMutation.mutate(d))}
+          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
+              Название *
+            </label>
+            <input
+              {...register('title', { required: true })}
+              placeholder="Позвонить клиенту..."
+              style={{
+                width: '100%', padding: '8px 12px', fontSize: 14,
+                border: `1px solid ${errors.title ? '#EF4444' : 'var(--color-border)'}`,
+                borderRadius: 'var(--radius-md)', background: 'var(--color-bg-elevated)',
+                color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)',
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
+              Описание
+            </label>
+            <textarea
+              {...register('description')}
+              rows={3}
+              placeholder="Дополнительные детали..."
+              style={{
+                width: '100%', padding: '8px 12px', fontSize: 14, resize: 'vertical',
+                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)',
+                fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
+                Приоритет
+              </label>
+              <select
+                {...register('priority')}
+                style={{
+                  width: '100%', padding: '8px 12px', fontSize: 14,
+                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-body)', outline: 'none',
+                }}
+              >
+                <option value="low">Низкий</option>
+                <option value="medium">Средний</option>
+                <option value="high">Высокий</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
+                Срок
+              </label>
+              <input
+                type="datetime-local"
+                {...register('due_at')}
+                style={{
+                  width: '100%', padding: '8px 12px', fontSize: 14,
+                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8 }}>
+            <Button type="button" variant="ghost" onClick={() => { setDrawerOpen(false); reset(); }}>
+              Отмена
+            </Button>
+            <Button type="submit" loading={createMutation.isPending}>
+              Создать задачу
+            </Button>
+          </div>
+        </form>
+      </Drawer>
+
       <div className="tasks-filter-tabs" style={{
         display:'flex', gap:4, marginBottom:20, padding:'4px',
         background:'var(--color-bg-muted)', borderRadius:'var(--radius-md)',
@@ -99,7 +207,6 @@ export default function TasksPage() {
         ))}
       </div>
 
-      {/* List */}
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         {isLoading
           ? [1,2,3,4].map(i => (
@@ -131,7 +238,6 @@ export default function TasksPage() {
                       opacity: isDone ? 0.5 : 1,
                     }}
                   >
-                    {/* Complete button */}
                     <button
                       onClick={() => !isDone && completeMutation.mutate(task.id)}
                       style={{ flexShrink:0, background:'none', border:'none', cursor:isDone?'default':'pointer', color: isDone?'#10B981':'var(--color-text-muted)', marginTop:1 }}
@@ -139,7 +245,6 @@ export default function TasksPage() {
                       {isDone ? <CheckCircle2 size={18} /> : <CheckSquare size={18} />}
                     </button>
 
-                    {/* Content */}
                     <div style={{ flex:1 }}>
                       <div style={{
                         fontSize:13, fontWeight:500,
