@@ -137,3 +137,28 @@ class CustomFieldValue(models.Model):
         db_table = 'custom_field_values'
         unique_together = [('field', 'entity_id')]
         indexes = [models.Index(fields=['entity_type', 'entity_id'])]
+
+
+class Branch(BaseModel):
+    """Филиал / офис организации."""
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='branches')
+    name = models.CharField(max_length=255)
+    city = models.CharField(max_length=100, blank=True)
+    address = models.TextField(blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    manager = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='managed_branches',
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'branches'
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.organization.name} / {self.name}'

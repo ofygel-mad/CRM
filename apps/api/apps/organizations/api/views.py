@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework import serializers, viewsets, status
-from apps.organizations.models import CustomField, CustomFieldValue, Organization
+from apps.organizations.models import Branch, CustomField, CustomFieldValue, Organization
 from apps.organizations.serializers import OrganizationSerializer
 from apps.core.permissions import IsOrgAdmin, get_user_role
 
@@ -149,3 +149,21 @@ class OrganizationActionsViewSet(viewsets.ViewSet):
             return Response({'ok': True, 'message': 'Подключение успешно'})
         except Exception as exc:
             return Response({'ok': False, 'message': str(exc)}, status=400)
+
+
+class BranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Branch
+        fields = ['id', 'name', 'city', 'address', 'phone', 'manager', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class BranchViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsOrgAdmin]
+    serializer_class = BranchSerializer
+
+    def get_queryset(self):
+        return Branch.objects.filter(organization=self.request.user.organization)
+
+    def perform_create(self, serializer):
+        serializer.save(organization=self.request.user.organization)

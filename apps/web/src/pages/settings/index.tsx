@@ -23,6 +23,9 @@ import {
   GitBranch,
   Shield,
   Globe,
+  Zap,
+  Key,
+  Copy,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { api } from "../../shared/api/client";
@@ -147,6 +150,8 @@ const SECTIONS = [
   { key: "pipelines", label: "Воронки", icon: <GitBranch size={16} /> },
   { key: "mode", label: "Режим CRM", icon: <Shield size={16} /> },
   { key: "integrations", label: "Интеграции", icon: <Globe size={16} /> },
+  { key: "webhooks", label: "Webhooks", icon: <Zap size={16} /> },
+  { key: "api", label: "API токены", icon: <Key size={16} /> },
 ];
 
 const MODE_LABELS: Record<string, string> = {
@@ -848,7 +853,7 @@ function IntegrationsSection() {
           size="sm"
           onClick={async () => {
             try {
-              const res = await api.post("/organization/email-test/", watch());
+              const res: any = await api.post("/organization/email-test/", watch());
               if (res.ok) toast.success("Подключение успешно!");
               else toast.error(res.message);
             } catch {
@@ -944,6 +949,130 @@ function ModeSection() {
   );
 }
 
+function WebhooksSection() {
+  const qc = useQueryClient();
+  const { data: hooks } = useQuery<any[]>({
+    queryKey: ["webhooks"],
+    queryFn: () => api.get<any>('/webhooks/').then((r: any) => r.results ?? r),
+  });
+  const { register, handleSubmit, reset } = useForm<{ url: string; events: string; description: string }>();
+
+  const createMutation = useMutation({
+    mutationFn: (d: any) => api.post('/webhooks/', { ...d, events: d.events.split(',').map((e: string) => e.trim()) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["webhooks"] });
+      reset();
+      toast.success('Webhook добавлен');
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/webhooks/${id}/`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["webhooks"] }),
+  });
+  const testMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/webhooks/${id}/test/`, {}),
+    onSuccess: () => toast.success('Тестовый webhook отправлен'),
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", padding: "12px 16px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
+        При событиях CRM отправит POST-запрос на указанные URL. Заголовок <code>X-CRM-Signature-256</code> содержит HMAC-SHA256 подпись.
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "16px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)" }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Добавить endpoint</div>
+        <input {...register("url", { required: true })} placeholder="https://your-app.com/crm-hook" className="crm-input" />
+        <input {...register("events")} placeholder="* или customer.created, deal.won" defaultValue="*" className="crm-input" />
+        <input {...register("description")} placeholder="Описание (опционально)" className="crm-input" />
+        <Button size="sm" onClick={handleSubmit((d) => createMutation.mutate(d))}>Добавить</Button>
+      </div>
+
+      {(hooks ?? []).map((h: any) => (
+        <div key={h.id} style={{ padding: "14px 16px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "var(--font-mono, monospace)", wordBreak: "break-all" }}>{h.url}</div>
+              <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 4 }}>
+                События: {(h.events ?? []).join(', ')} · Ошибок: {h.failure_count}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Button variant="ghost" size="sm" onClick={() => testMutation.mutate(h.id)}>Тест</Button>
+              <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(h.id)}>Удалить</Button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ApiTokensSection() {
+  const qc = useQueryClient();
+  const { data: tokens } = useQuery<any[]>({ queryKey: ["api-tokens"], queryFn: () => api.get('/api-tokens/') });
+  const [newToken, setNewToken] = useState<string | null>(null);
+  const { register, handleSubmit, reset } = useForm<{ name: string; scopes: string }>();
+
+  const createMutation = useMutation({
+    mutationFn: (d: any) => api.post('/api-tokens/', { name: d.name, scopes: d.scopes.split(',').map((s: string) => s.trim()) }),
+    onSuccess: (res) => {
+      setNewToken((res as any).token);
+      qc.invalidateQueries({ queryKey: ["api-tokens"] });
+      reset();
+    },
+  });
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/api-tokens/${id}/`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["api-tokens"] });
+      toast.success('Токен отозван');
+    },
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", padding: "12px 16px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
+        API-токены позволяют сторонним сервисам обращаться к CRM API без входа пользователя. Токен показывается один раз. Prefix: <code>crm_</code>
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <input {...register("name", { required: true })} placeholder="Название интеграции" className="crm-input" style={{ flex: 1 }} />
+        <input {...register("scopes")} placeholder="* или customers:read,deals:read" defaultValue="*" className="crm-input" style={{ flex: 1 }} />
+        <Button size="sm" onClick={handleSubmit((d) => createMutation.mutate(d))}>Создать</Button>
+      </div>
+
+      {newToken && (
+        <div style={{ padding: "12px 16px", background: "#D1FAE5", border: "1px solid #10B981", borderRadius: "var(--radius-md)" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 6 }}>
+            ⚠️ Сохраните токен — он больше не будет показан
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <code style={{ flex: 1, fontSize: 12, wordBreak: "break-all", color: "#065F46" }}>{newToken}</code>
+            <button onClick={() => { navigator.clipboard.writeText(newToken); toast.success('Скопировано'); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#065F46" }}>
+              <Copy size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(tokens ?? []).map((t: any) => (
+        <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</div>
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+              Scopes: {(t.scopes ?? []).join(', ')}
+              {t.last_used_at ? ` · Последнее использование: ${new Date(t.last_used_at).toLocaleDateString('ru')}` : ' · Не использовался'}
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => revokeMutation.mutate(t.id)}>Отозвать</Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState("organization");
 
@@ -1018,6 +1147,8 @@ export default function SettingsPage() {
             {activeSection === "mode" && <ModeSection />}
             {activeSection === "pipelines" && <PipelinesSection />}
             {activeSection === "integrations" && <IntegrationsSection />}
+            {activeSection === "webhooks" && <WebhooksSection />}
+            {activeSection === "api" && <ApiTokensSection />}
           </motion.div>
         </AnimatePresence>
       </div>

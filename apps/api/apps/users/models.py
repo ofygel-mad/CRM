@@ -68,6 +68,13 @@ class OrganizationMembership(models.Model):
         'organizations.Organization', on_delete=models.CASCADE, related_name='memberships',
     )
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.MANAGER)
+    branch = models.ForeignKey(
+        'organizations.Branch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='members',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

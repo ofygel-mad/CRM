@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.audit',
     'apps.reports',
+    'apps.webhooks',
 ]
 
 MIDDLEWARE = [
@@ -127,6 +128,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'apps.core.authentication.QueryParamJWTAuthentication',
+        'apps.core.authentication.ApiTokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -180,6 +182,7 @@ CELERY_TASK_QUEUES = {
     'exports': {},
     'automations': {},
     'notifications': {},
+    'webhooks': {},
 }
 
 CELERY_BEAT_SCHEDULE = {
@@ -229,3 +232,5 @@ from config.logging import LOGGING_CONFIG
 LOGGING = LOGGING_CONFIG
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')

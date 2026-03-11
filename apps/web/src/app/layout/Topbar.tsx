@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useSSE } from '../../shared/hooks/useSSE';
 import { useUIStore } from '../../shared/stores/ui';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
+import { useT } from '../../shared/i18n';
 
 interface Notification { id: string; title: string; body: string; is_read: boolean; created_at: string; }
 
@@ -124,6 +125,7 @@ export function Topbar() {
   const user      = useAuthStore(s => s.user);
   const { theme, setTheme } = useUIStore();
   const isMobile  = useIsMobile();
+  const { locale, setLocale } = useT();
 
   const crumb = BREADCRUMBS[location.pathname] ?? location.pathname.slice(1);
 
@@ -178,6 +180,23 @@ export function Topbar() {
         </button>
 
         <NotificationBell />
+
+        <button
+          onClick={() => setLocale(locale === 'ru' ? 'kk' : 'ru')}
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'var(--color-text-muted)',
+            background: 'var(--color-bg-muted)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '4px 10px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          {locale === 'ru' ? 'KK' : 'RU'}
+        </button>
 
         {/* Theme switcher — иконка-only на mobile */}
         {isMobile ? (

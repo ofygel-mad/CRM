@@ -34,6 +34,7 @@ import { CustomFieldsTab } from "../../../shared/ui/CustomFieldsTab";
 import { ru } from "date-fns/locale";
 import { formatPhoneForWhatsApp } from "../../../shared/utils/kz";
 import { currencySymbol, formatNumber } from "../../../shared/utils/format";
+import { AiAssistant } from "../../../widgets/ai-assistant/AiAssistant";
 
 interface CustomerDetail {
   id: string;
@@ -1240,6 +1241,7 @@ export default function CustomerProfilePage() {
           </div>
         </div>
       </Drawer>
+      <AiAssistant customerId={id} />
     </div>
   );
 }
