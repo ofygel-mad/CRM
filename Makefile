@@ -1,4 +1,4 @@
-.PHONY: dev prod migrate makemigrations shell createsuperuser logs-api logs-worker test lint-frontend build-frontend import-fixtures reset-db seed-automations migrate-all setup-phase4 psql backup restore worker-logs
+.PHONY: dev prod migrate makemigrations shell createsuperuser logs-api logs-worker test lint-frontend build-frontend import-fixtures reset-db seed-automations migrate-all setup-phase4 psql backup restore worker-logs setup-python-local check-api-local
 
 dev:
 	docker-compose up --build
@@ -66,3 +66,10 @@ restore:
 
 worker-logs:
 	docker compose logs -f worker beat
+
+setup-python-local:
+	python3 -m venv .venv
+	. .venv/bin/activate && pip install --upgrade pip && pip install -r requirements/dev.txt
+
+check-api-local:
+	. .venv/bin/activate && cd apps/api && python manage.py check
