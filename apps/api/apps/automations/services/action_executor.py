@@ -303,9 +303,7 @@ def _action_change_deal_stage(cfg: dict, execution: AutomationExecution, event, 
 
 
 def _action_webhook(cfg: dict, execution: AutomationExecution, event, context: dict) -> dict:
-    import json
-    import urllib.request
-    import urllib.error
+    import requests
 
     url = cfg.get('url')
     if not url:
@@ -325,14 +323,10 @@ def _action_webhook(cfg: dict, execution: AutomationExecution, event, context: d
         'context': {k: v for k, v in context.items() if k != 'organization'},
     }
 
-    data = json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            status = resp.status
-    except urllib.error.HTTPError as e:
-        status = e.code
-    except urllib.error.URLError as e:
-        raise ValueError(f'Webhook failed: {e.reason}')
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        status = response.status_code
+    except requests.RequestException as exc:
+        raise ValueError(f'Webhook failed: {exc}')
 
     return {'url': url, 'status_code': status}
