@@ -39,6 +39,7 @@ const STEPS = ['Ваш бизнес', 'Режим CRM', 'Быстрый стар
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
+  const setOrg = useAuthStore(s => s.setOrg);
   const [step, setStep] = useState(0);
   const [industry, setIndustry] = useState('');
   const [companySize, setCompanySize] = useState('');
@@ -46,7 +47,8 @@ export default function OnboardingPage() {
 
   const setupMutation = useMutation({
     mutationFn: (data: object) => api.patch('/organization/', data),
-    onSuccess: () => {
+    onSuccess: (updated: any) => {
+      setOrg({ onboarding_completed: true, ...(updated ?? {}) });
       toast.success('Настройки сохранены');
       navigate('/');
     },

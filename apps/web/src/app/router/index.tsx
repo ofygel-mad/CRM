@@ -1,60 +1,19 @@
 import { createBrowserRouter, Navigate, RouterProvider, Outlet } from 'react-router-dom';
-import { lazy, Suspense, Component, type ComponentType, type ReactNode } from 'react';
+import { lazy, Suspense, type ComponentType } from 'react';
 import { AppShell } from '../layout/AppShell';
 import { AuthShell } from '../layout/AuthShell';
 import { PageLoader } from '../../shared/ui/PageLoader';
 import { useAuthStore } from '../../shared/stores/auth';
-
-interface EBState { hasError: boolean; message: string }
-
-class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
-  state: EBState = { hasError: false, message: '' };
-
-  static getDerivedStateFromError(error: Error): EBState {
-    return { hasError: true, message: error.message };
-  }
-
-  render() {
-    if (!this.state.hasError) return this.props.children;
-
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 16,
-        fontFamily: 'var(--font-body)',
-      }}>
-        <div style={{ fontSize: 32 }}>⚠️</div>
-        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-          Что-то пошло не так
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', maxWidth: 360, textAlign: 'center' }}>
-          {this.state.message}
-        </div>
-        <button
-          onClick={() => {
-            this.setState({ hasError: false, message: '' });
-            window.location.href = '/';
-          }}
-          style={{
-            padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-            background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)',
-            fontFamily: 'var(--font-body)',
-          }}
-        >
-          На главную
-        </button>
-      </div>
-    );
-  }
-}
+import { ErrorBoundary } from '../../shared/ui/ErrorBoundary';
 
 const wrap = (imp: () => Promise<{ default: ComponentType }>) => {
   const Comp = lazy(imp);
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Comp />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        <Comp />
+      </Suspense>
+    </ErrorBoundary>
   );
 };
 

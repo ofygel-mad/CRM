@@ -17,8 +17,13 @@
     <script>
       (function() {
         try {
-          var t = localStorage.getItem('crm-theme') || 'light';
-          document.documentElement.setAttribute('data-theme', t);
+          var raw = localStorage.getItem('crm-ui');
+          var theme = 'system';
+          try { theme = JSON.parse(raw).state.theme; } catch(e) {}
+          var dark = theme === 'dark' ||
+            (theme === 'system' && window.matchMedia('(prefers-color-scheme:dark)').matches);
+          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+          else document.documentElement.removeAttribute('data-theme');
         } catch(e) {}
       })();
     </script>

@@ -37,6 +37,8 @@ import { ru } from "date-fns/locale";
 import { formatPhoneForWhatsApp } from "../../../shared/utils/kz";
 import { currencySymbol, formatNumber } from "../../../shared/utils/format";
 import { AiAssistant } from "../../../widgets/ai-assistant/AiAssistant";
+import { useCopyToClipboard } from '../../../shared/hooks/useCopyToClipboard';
+import { useDocumentTitle } from '../../../shared/hooks/useDocumentTitle';
 
 interface CustomerDetail {
   id: string;
@@ -162,13 +164,13 @@ const DEFAULT_ACTIVITY = {
 
 function CopyableValue({ value, href, children }: { value: string; href?: string; children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
+  const copyToClipboard = useCopyToClipboard();
   const copy = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
+    copyToClipboard(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
   };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -372,6 +374,7 @@ export default function CustomerProfilePage() {
     queryKey: ["customer", id],
     queryFn: () => api.get(`/customers/${id}/`),
   });
+  useDocumentTitle(customer?.full_name);
   const { data: activities } = useQuery<{ results: Activity[] }>({
     queryKey: ["customer-activities", id],
     queryFn: () => api.get(`/customers/${id}/activities/`),

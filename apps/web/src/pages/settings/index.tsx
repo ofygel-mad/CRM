@@ -36,6 +36,7 @@ import { Skeleton } from "../../shared/ui/Skeleton";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRole } from "../../shared/hooks/useRole";
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
 
 interface Pipeline {
   id: string;
@@ -1075,6 +1076,7 @@ function ApiTokensSection() {
 
 
 export default function SettingsPage() {
+  useDocumentTitle('Настройки');
   const [activeSection, setActiveSection] = useState("organization");
 
   return (

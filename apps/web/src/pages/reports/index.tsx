@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -31,6 +32,8 @@ import { Button } from "../../shared/ui/Button";
 import { useAuthStore } from "../../shared/stores/auth";
 import { currencySymbol, formatNumber } from "../../shared/utils/format";
 import { useIsMobile } from "../../shared/hooks/useIsMobile";
+import { format, subDays, startOfMonth, startOfQuarter, startOfYear } from "date-fns";
+import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 
 interface KpiManager {
   id: string;
@@ -68,6 +71,35 @@ interface ReportData {
   };
 }
 
+
+
+type Period = "7d" | "30d" | "month" | "quarter" | "year";
+
+const PERIOD_OPTIONS: { key: Period; label: string }[] = [
+  { key: "7d", label: "7 дней" },
+  { key: "30d", label: "30 дней" },
+  { key: "month", label: "Месяц" },
+  { key: "quarter", label: "Квартал" },
+  { key: "year", label: "Год" },
+];
+
+function periodToDates(p: Period): { date_from: string; date_to: string } {
+  const now = new Date();
+  const to = format(now, "yyyy-MM-dd");
+  const from = format(
+    p === "7d"
+      ? subDays(now, 7)
+      : p === "30d"
+        ? subDays(now, 30)
+        : p === "month"
+          ? startOfMonth(now)
+          : p === "quarter"
+            ? startOfQuarter(now)
+            : startOfYear(now),
+    "yyyy-MM-dd",
+  );
+  return { date_from: from, date_to: to };
+}
 const COLORS = [
   "#D97706",
   "#3B82F6",
@@ -268,17 +300,20 @@ function Metric({
 }
 
 export default function ReportsPage() {
+  useDocumentTitle("Отчёты");
   const token = useAuthStore((s) => s.token);
   const org = useAuthStore((s) => s.org);
   const orgSym = currencySymbol(org?.currency ?? "KZT");
   const isMobile = useIsMobile();
+  const [period, setPeriod] = useState<Period>("30d");
+  const dates = periodToDates(period);
   const { data, isLoading } = useQuery<ReportData>({
-    queryKey: ["reports-summary"],
-    queryFn: () => api.get("/reports/summary/"),
+    queryKey: ["reports-summary", period],
+    queryFn: () => api.get("/reports/summary/", dates),
   });
   const { data: kpiData } = useQuery<KpiData>({
-    queryKey: ["reports-kpi"],
-    queryFn: () => api.get("/reports/manager-kpi/"),
+    queryKey: ["reports-kpi", period],
+    queryFn: () => api.get("/reports/manager-kpi/", dates),
   });
 
   const dl = async (path: string, name: string) => {
@@ -298,6 +333,32 @@ export default function ReportsPage() {
     name: s.source || "Не указан",
     value: s.count,
   }));
+  const periodFilter = (
+    <div style={{ display: "flex", gap: 4, padding: "4px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
+      {PERIOD_OPTIONS.map((o) => (
+        <button
+          key={o.key}
+          onClick={() => setPeriod(o.key)}
+          style={{
+            padding: "5px 11px",
+            fontSize: 12,
+            fontWeight: 500,
+            borderRadius: "var(--radius-sm)",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "var(--font-body)",
+            background: period === o.key ? "var(--color-bg-elevated)" : "transparent",
+            color: period === o.key ? "var(--color-text-primary)" : "var(--color-text-muted)",
+            boxShadow: period === o.key ? "var(--shadow-xs)" : "none",
+            transition: "all var(--transition-fast)",
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+
   const funnel = data?.funnel
     ? [
         { name: "Клиенты", value: data.funnel.customers, fill: "#D97706" },
@@ -313,7 +374,8 @@ export default function ReportsPage() {
         title="Отчёты"
         subtitle="Аналитика по клиентам и сделкам"
         actions={
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {periodFilter}
             <Button
               variant="secondary"
               size="sm"

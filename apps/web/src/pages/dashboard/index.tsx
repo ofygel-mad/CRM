@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../shared/api/client';
 import { useAuthStore } from '../../shared/stores/auth';
+import { formatNumber, formatMoney } from '../../shared/utils/format';
 import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Badge } from '../../shared/ui/Badge';
@@ -45,10 +46,11 @@ function StatCard({ label, value, delta, icon, accent, fmt = 'n', loading }: {
   label: string; value: number; delta?: number; icon: React.ReactNode;
   accent: string; fmt?: 'n' | 'c'; loading?: boolean;
 }) {
+  const orgCurrency = useAuthStore.getState().org?.currency ?? 'KZT';
   const display =
     fmt === 'c'
-      ? new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value)
-      : value.toLocaleString('ru-RU');
+      ? formatMoney(value, orgCurrency)
+      : formatNumber(value);
 
   return (
     <motion.div variants={fadeUp} style={{
