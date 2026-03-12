@@ -1,4 +1,4 @@
-.PHONY: dev prod migrate makemigrations shell createsuperuser logs-api logs-worker test lint-frontend build-frontend import-fixtures reset-db
+.PHONY: dev prod migrate makemigrations shell createsuperuser logs-api logs-worker test lint-frontend build-frontend import-fixtures reset-db seed-automations migrate-all setup-phase4 psql backup restore worker-logs
 
 dev:
 	docker-compose up --build
@@ -49,3 +49,20 @@ migrate-all:
 
 setup-phase4: migrate-all seed-automations
 	@echo "Phase 4 setup complete ✓"
+
+
+psql:
+	docker compose exec postgres psql -U crm crm
+
+backup:
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	docker compose exec -T postgres pg_dump -U crm crm | gzip > backup_$$TIMESTAMP.sql.gz; \
+	echo "Backup saved: backup_$$TIMESTAMP.sql.gz"
+
+restore:
+	@echo "Usage: make restore FILE=backup_20240101_120000.sql.gz"
+	@test -n "$(FILE)" || (echo "FILE is required" && exit 1)
+	gunzip -c $(FILE) | docker compose exec -T postgres psql -U crm crm
+
+worker-logs:
+	docker compose logs -f worker beat

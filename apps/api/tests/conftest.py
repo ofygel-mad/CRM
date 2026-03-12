@@ -63,5 +63,5 @@ def deal(db, org, user, customer, pipeline):
     return Deal.objects.create(
         organization=org, owner=user, customer=customer,
         pipeline=pipeline, stage=stage,
-        title='Test Deal', amount=100000, currency='RUB',
+        title='Test Deal', amount=100000, currency='KZT',
     )

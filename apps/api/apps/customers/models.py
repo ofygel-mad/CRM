@@ -13,7 +13,7 @@ class Customer(BaseModel):
     owner = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_customers')
     full_name = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255, blank=True)
-    phone = models.CharField(max_length=32, blank=True)
+    phone = models.CharField(max_length=32, blank=True, db_index=True)
     email = models.EmailField(blank=True)
     bin_iin = models.CharField(max_length=12, blank=True, verbose_name='БИН/ИИН')
     source = models.CharField(max_length=100, blank=True)
@@ -28,6 +28,7 @@ class Customer(BaseModel):
             models.Index(fields=['organization', 'status']),
             models.Index(fields=['organization', 'owner']),
             models.Index(fields=['organization', 'deleted_at']),
+            models.Index(fields=['organization', '-created_at']),
         ]
 
     def __str__(self):

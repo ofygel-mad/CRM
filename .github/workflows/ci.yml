@@ -46,6 +46,12 @@ jobs:
           pip install ruff
           ruff check .
 
+      - name: Security scan
+        run: |
+          pip install bandit safety
+          bandit -r apps/ -ll -q || true
+          safety check -r requirements/base.txt --continue-on-error || true
+
       - name: Test
         env:
           DJANGO_SETTINGS_MODULE: config.settings.test
