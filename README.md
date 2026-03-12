@@ -63,6 +63,20 @@ If you prefer running tools from the repo root instead of changing directories:
   pip install -r requirements/dev.txt
   ```
 
+### Local Python environment for `apps/api`
+
+To run Django management commands locally (without Docker), initialize the project virtual environment once:
+
+```bash
+make setup-python-local
+```
+
+Then run checks via:
+
+```bash
+make check-api-local
+```
+
 ## Architectural principles
 
 - Versioned API (`/api/v1/*`)
