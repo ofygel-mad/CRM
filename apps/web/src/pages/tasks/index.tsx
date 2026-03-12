@@ -11,9 +11,10 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { Drawer } from '../../shared/ui/Drawer';
 import { toast } from 'sonner';
 import { format, isPast, isToday } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { getDateLocale } from '../../shared/utils/locale';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { useForm } from 'react-hook-form';
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
 
 interface TaskForm {
   title: string;
@@ -58,6 +59,7 @@ const FILTERS = [
 ];
 
 export default function TasksPage() {
+  useDocumentTitle('Задачи');
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>('mine');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -218,7 +220,7 @@ export default function TasksPage() {
                         {dueDate && (
                           <span style={{ fontSize:11, display:'flex', alignItems:'center', gap:3, color:isOver?'#DC2626':isDue?'#D97706':'var(--color-text-muted)' }}>
                             {isOver ? <AlertCircle size={11}/> : <Clock size={11}/>}
-                            {format(dueDate, 'd MMM', { locale:ru })}
+                            {format(dueDate, 'd MMM', { locale: getDateLocale() })}
                           </span>
                         )}
                       </div>

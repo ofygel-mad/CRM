@@ -22,6 +22,7 @@ import { ContextMenu, type ContextMenuItem } from '../../shared/ui/ContextMenu';
 import { HealthScoreBadge } from '../../shared/ui/HealthScoreBadge';
 import { useSuggestionsStore } from '../../shared/stores/suggestions';
 import { nanoid } from 'nanoid';
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -142,6 +143,7 @@ function BulkBar({ count, onAssign, onStatus, onDelete, onClear }: {
 }
 
 export default function CustomersPage() {
+  useDocumentTitle('Клиенты');
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');

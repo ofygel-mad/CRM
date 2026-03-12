@@ -30,9 +30,10 @@ import { currencySymbol } from "../../../shared/utils/format";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
-import { ru } from "date-fns/locale";
+import { getDateLocale } from '../../../shared/utils/locale';
 import { useAuthStore } from "../../../shared/stores/auth";
 import { useConvert } from "../../../shared/hooks/useExchangeRates";
+import { useDocumentTitle } from '../../../shared/hooks/useDocumentTitle';
 
 interface Stage {
   id: string;
@@ -418,7 +419,7 @@ function ActivityTimeline({ activities }: { activities: Activity[] }) {
                 {act.actor && " · "}
                 {formatDistanceToNow(new Date(act.created_at), {
                   addSuffix: true,
-                  locale: ru,
+                  locale: getDateLocale(),
                 })}
               </div>
             </div>
@@ -578,6 +579,7 @@ export default function DealProfilePage() {
     queryKey: ["deal", id],
     queryFn: () => api.get(`/deals/${id}/`),
   });
+  useDocumentTitle(deal?.title);
   const { data: activities } = useQuery<{ results: Activity[] }>({
     queryKey: ["deal-activities", id],
     queryFn: () => api.get(`/deals/${id}/activities/`),
@@ -860,7 +862,7 @@ export default function DealProfilePage() {
                           {a.actor?.full_name} ·{" "}
                           {formatDistanceToNow(new Date(a.created_at), {
                             addSuffix: true,
-                            locale: ru,
+                            locale: getDateLocale(),
                           })}
                         </div>
                       </div>
@@ -944,7 +946,7 @@ export default function DealProfilePage() {
                             >
                               До{" "}
                               {format(new Date(task.due_date), "d MMM", {
-                                locale: ru,
+                                locale: getDateLocale(),
                               })}
                             </div>
                           )}
@@ -1002,7 +1004,7 @@ export default function DealProfilePage() {
                 icon={<Calendar size={13} />}
                 label="Создана"
                 value={format(new Date(deal.created_at), "d MMM yyyy", {
-                  locale: ru,
+                  locale: getDateLocale(),
                 })}
               />
               {deal.expected_close_date && (
@@ -1012,7 +1014,7 @@ export default function DealProfilePage() {
                   value={format(
                     new Date(deal.expected_close_date),
                     "d MMM yyyy",
-                    { locale: ru },
+                    { locale: getDateLocale() },
                   )}
                   extra={
                     daysToClose !== null && (

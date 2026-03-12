@@ -16,6 +16,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { Drawer } from '../../shared/ui/Drawer';
 import { toast } from 'sonner';
 import { useCapabilities } from '../../shared/hooks/useCapabilities';
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
 
 interface Condition {
   field_path: string;
@@ -715,6 +716,7 @@ function BuilderDrawer({
 }
 
 export default function AutomationsPage() {
+  useDocumentTitle('Автоматизации');
   const { can } = useCapabilities();
   const qc = useQueryClient();
   const [builderOpen, setBuilderOpen] = useState(false);

@@ -7,6 +7,7 @@ import { PageHeader } from '../../shared/ui/PageHeader';
 import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { toast } from 'sonner';
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
 
 const CRM_FIELDS = [
   { value: '', label: '— Не импортировать —' },
@@ -41,6 +42,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 };
 
 export default function ImportsPage() {
+  useDocumentTitle('Импорт');
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);

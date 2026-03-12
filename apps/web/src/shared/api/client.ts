@@ -71,6 +71,17 @@ apiClient.interceptors.response.use(
       }
     }
 
+    if (error.response?.status === 403) {
+      const msg = (error.response.data as any)?.detail ?? 'Недостаточно прав';
+      import('sonner').then(({ toast }) => toast.error(msg));
+    }
+
+    if ((error.response?.status ?? 0) >= 500) {
+      import('sonner').then(({ toast }) =>
+        toast.error('Ошибка сервера. Попробуйте позже.')
+      );
+    }
+
     return Promise.reject(error);
   },
 );

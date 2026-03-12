@@ -30,6 +30,7 @@ type AuthState = {
   setTokens: (access: string, refresh: string) => void;
   setRole: (role: string) => void;
   setUser: (user: Partial<User>) => void;
+  setOrg: (org: Partial<Org>) => void;
   clearAuth: () => void;
 };
 
@@ -47,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (token, refreshToken) => set({ token, refreshToken }),
       setRole: (role) => set({ role }),
       setUser: (partial) => set({ user: { ...get().user!, ...partial } }),
+      setOrg: (partial) => set({ org: { ...get().org!, ...partial } }),
       clearAuth: () =>
         set({ user: null, org: null, token: null, refreshToken: null, role: 'viewer', capabilities: [] }),
     }),

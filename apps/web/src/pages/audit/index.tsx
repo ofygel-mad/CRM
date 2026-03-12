@@ -8,6 +8,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Badge } from '../../shared/ui/Badge';
 import { useCapabilities } from '../../shared/hooks/useCapabilities';
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
 
 interface AuditEntry {
   id: string; action: string; entity_type: string; entity_id: string;
@@ -30,6 +31,7 @@ const ENTITY_LABELS: Record<string, string> = {
 };
 
 export default function AuditPage() {
+  useDocumentTitle('Аудит');
   const { can } = useCapabilities();
   const [search, setSearch] = useState('');
   const [filterAction, setFilterAction] = useState('');

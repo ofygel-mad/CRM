@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { useSuggestionsStore } from '../../shared/stores/suggestions';
 import { nanoid } from 'nanoid';
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
 
 interface DealCard {
   id:string; title:string; amount?:number; currency:string; status:string;
@@ -137,6 +138,7 @@ function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean })
 }
 
 export default function DealsPage() {
+  useDocumentTitle('Сделки');
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string|null>(null);
   const [createDrawer, setCreateDrawer] = useState(false);
